@@ -25,23 +25,15 @@ Features
 Installation
 ------------
 
-```
-gauge install markdown-report
-```
+This fork is not registered in the [gauge-repository](https://github.com/getgauge/gauge-repository), so the bare `gauge install markdown-report` command will not resolve. Install from a release asset instead:
 
-Specific version:
-
-```
-gauge install markdown-report --version 0.1.0
-```
-
-#### Offline installation
-
-Download the plugin from [Releases](https://github.com/julias-shaw/gauge-markdown-report/releases):
+Download the appropriate zip for your platform from [Releases](https://github.com/julias-shaw/gauge-markdown-report/releases) and run:
 
 ```
 gauge install markdown-report --file markdown-report-0.1.0-linux.x86_64.zip
 ```
+
+Substitute `linux.x86_64` with `linux.arm64`, `darwin.x86_64`, `darwin.arm64`, `windows.x86_64`, or `windows.arm64` as appropriate.
 
 #### Build from source
 

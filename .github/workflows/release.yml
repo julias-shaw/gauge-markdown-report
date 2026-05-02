@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the commit that produced the green CI run
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           # Pinning to head_sha avoids version skew if master advanced
           # between the test workflow finishing and this one starting.
@@ -35,7 +35,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v6.4.0
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -75,5 +75,5 @@ jobs:
         run: |
           gh release create "v$VERSION" \
             --title "markdown-report v$VERSION" \
-            --notes "Automated release for markdown-report v$VERSION." \
+            --generate-notes \
             deploy/markdown-report-*.zip
