@@ -228,9 +228,7 @@ func extractTagName(s string) string {
 		return ""
 	}
 	s = s[1:]
-	if strings.HasPrefix(s, "/") {
-		s = s[1:]
-	}
+	s = strings.TrimPrefix(s, "/")
 	end := len(s)
 	for i, r := range s {
 		if r == ' ' || r == '>' || r == '/' {

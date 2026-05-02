@@ -113,17 +113,6 @@ func newParamFragment(p *gm.Parameter) *gm.Fragment {
 	}
 }
 
-func newConceptItem(heading string, steps []*gm.ProtoItem, cptRes *gm.ProtoStepExecutionResult) *gm.ProtoItem {
-	return &gm.ProtoItem{
-		ItemType: gm.ProtoItem_Concept,
-		Concept: &gm.ProtoConcept{
-			ConceptStep:            newStepItem(false, false, []*gm.Fragment{newTextFragment(heading)}).GetStep(),
-			Steps:                  steps,
-			ConceptExecutionResult: cptRes,
-		},
-	}
-}
-
 func newScreenshot() string {
 	return `failure-screenshot-file.png`
 }
@@ -190,44 +179,6 @@ var specResWithMissingTable = &gm.ProtoSpecResult{
 	},
 }
 
-var spec1 = &spec{
-	SpecHeading:   "specRes1",
-	Tags:          []string{"tag1", "tag2"},
-	FileName:      "/tmp/gauge/specs/foobar.spec",
-	SpecFileName:  "/tmp/gauge/specs/foobar.spec",
-	ExecutionTime: 211316,
-	IsTableDriven: true,
-	Datatable: &table{
-		Headers: []string{"Word", "Count"},
-		Rows: []*row{
-			{Cells: []string{"Gauge", "3"}},
-			{Cells: []string{"Mingle", "2"}}}},
-	CommentsBeforeDatatable: `
-This is an executable specification file. This file follows markdown syntax.
-To execute this specification, run
-	gauge specs
-`,
-	CommentsAfterDatatable: `Comment 1
-Comment 2
-Comment 3`,
-}
-
-var spec2 = &spec{
-	ExecutionStatus: fail,
-	ExecutionTime:   211316,
-	FileName:        "specRes2.spec",
-	SpecHeading:     "specRes2",
-	Tags:            []string{"tag1", "tag2", "tag3"},
-}
-
-var spec3 = &spec{
-	ExecutionStatus: skip,
-	ExecutionTime:   211316,
-	FileName:        "specRes3.spec",
-	SpecHeading:     "specRes3",
-	Tags:            []string{"tag1"},
-}
-
 var datatableDrivenSpec = &gm.ProtoSpecResult{
 	Failed:        false,
 	Skipped:       false,
@@ -289,40 +240,6 @@ var specResWithSpecHookFailure = &gm.ProtoSpecResult{
 	},
 }
 
-var suiteRes1 = &SuiteResult{
-	ProjectName:   "projName",
-	Environment:   "ci-java",
-	Tags:          "!unimplemented",
-	SuccessRate:   80,
-	ExecutionTime: 113163,
-	Timestamp:     "Jun 3, 2016 at 12:29pm",
-	SpecResults: []*spec{
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-		{Scenarios: make([]*scenario, 1)},
-		{Scenarios: make([]*scenario, 2)},
-	},
-	PassedScenarioCount:  7,
-	SkippedScenarioCount: 10,
-	FailedScenarioCount:  6,
-	FailedSpecsCount:     2,
-	SkippedSpecsCount:    5,
-	PassedSpecsCount:     8,
-	PreHookMessages:      []string{"Before Suite Message"},
-	PostHookMessages:     []string{"After Suite Message"},
-}
-
 var scn = &gm.ProtoScenario{
 	ScenarioHeading: "Vowel counts in single word",
 	ExecutionStatus: gm.ExecutionStatus_PASSED,
@@ -375,10 +292,6 @@ var skippedProtoSce = &gm.ProtoScenario{
 	ScenarioItems: []*gm.ProtoItem{
 		newStepItem(true, false, []*gm.Fragment{newTextFragment("Step1")}),
 	},
-}
-
-var suiteRes2 = &SuiteResult{
-	SpecResults: []*spec{spec1, spec2, spec3},
 }
 
 var protoStep = &gm.ProtoStep{
