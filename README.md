@@ -1,17 +1,12 @@
 markdown-report
 ===============
 
-[![Actions Status](https://github.com/getgauge/html-report/workflows/test/badge.svg)](https://github.com/getgauge/html-report/actions)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+[![Actions Status](https://github.com/julias-shaw/gauge-markdown-report/workflows/test/badge.svg)](https://github.com/julias-shaw/gauge-markdown-report/actions)
 
 A [Gauge](https://gauge.org) execution-reporting plugin that emits
-GitHub-Flavored Markdown. Runs as a drop-in replacement for the old
-`html-report` plugin, but the output is plain `.md` so reports render in
-GitHub, GitLab, IDE previewers, `glow`, and any other Markdown viewer.
-
-> **v5.0 is a breaking change.** The plugin id, env-var prefix, output
-> format, and version line all changed. See [Migrating from html-report
-> v4](#migrating-from-html-report-v4) below.
+GitHub-Flavored Markdown. Forked from the `html-report` plugin, but
+the output is plain `.md` so reports render in GitHub, GitLab, IDE
+previewers, `glow`, and any other Markdown viewer.
 
 Features
 --------
@@ -27,18 +22,6 @@ Features
   GFM tables with per-row pass/fail status.
 - Honors `use_nested_specs` to emit a per-directory `index.md`.
 
-What was removed in v5
-----------------------
-
-- The HTML template stack (`generator/`, `theme/`, `themes/`).
-- The full-text search sidebar / `js/search_index.js`.
-- Theme support (`GAUGE_HTML_REPORT_THEME_PATH`).
-- The HTML minifier and the `gauge_minify_reports` env var.
-
-If your CI scrapes `index.html` or hands the report to a human via a
-themed lightbox, you should stay on `html-report` v4 until those
-consumers are migrated.
-
 Installation
 ------------
 
@@ -49,15 +32,15 @@ gauge install markdown-report
 Specific version:
 
 ```
-gauge install markdown-report --version 5.0.0
+gauge install markdown-report --version 0.1.0
 ```
 
 #### Offline installation
 
-Download the plugin from [Releases](https://github.com/getgauge/html-report/releases):
+Download the plugin from [Releases](https://github.com/julias-shaw/gauge-markdown-report/releases):
 
 ```
-gauge install markdown-report --file markdown-report-5.0.0-linux.x86_64.zip
+gauge install markdown-report --file markdown-report-0.1.0-linux.x86_64.zip
 ```
 
 #### Build from source
@@ -89,9 +72,6 @@ configurable properties are:
 | `save_execution_result`   | boolean | `true`      | If `true`, the plugin places a symlink (or `.bat` on Windows) to its executable inside the report directory so the report can be regenerated offline. |
 | `gauge_screenshots_dir`   | path    | unset       | Where Gauge stages step / hook screenshots. Set by Gauge; the plugin reads the variable. |
 
-The `GAUGE_HTML_REPORT_THEME_PATH` and `gauge_minify_reports` variables
-from v4 are no longer consulted.
-
 Report regeneration
 -------------------
 
@@ -110,29 +90,6 @@ The output directory is created if it doesn't exist; do not point this
 at a directory you don't want overwritten. Regeneration only works if
 `save_execution_result` was `true` when the original run captured the
 result.
-
-Migrating from html-report v4
------------------------------
-
-1. **Install the new plugin.** `gauge install markdown-report` —
-   `html-report` is no longer maintained for new releases. Both
-   plugins can coexist temporarily while you cut over.
-2. **Update env files.** Remove `gauge_minify_reports` and
-   `GAUGE_HTML_REPORT_THEME_PATH` from `env/default/default.properties`.
-   The remaining variables (`gauge_reports_dir`, `overwrite_reports`,
-   `use_nested_specs`, `save_execution_result`) carry over unchanged.
-3. **Adjust report consumers.** If you have CI that publishes
-   `index.html` or scrapes `js/search_index.js`, repoint to `index.md`
-   and the `specs/<name>.md` tree. GitHub renders the report directly
-   when committed.
-4. **Update the plugin id wherever it's referenced.** In CI logs,
-   gauge-repository registrations, or any tooling that filters by
-   plugin id, change `html-report` to `markdown-report`.
-5. **Custom themes are gone.** v5 uses the Markdown engine of the
-   target viewer (GitHub, glow, IDE preview) for styling. If you
-   shipped a custom theme, that effort moves to viewer choice.
-6. **Search / sidebar UI is gone.** Use your editor's file finder or
-   `grep` against the `.md` tree.
 
 Sample output
 -------------
@@ -192,4 +149,4 @@ License
 Copyright
 ---------
 
-Copyright 2015 ThoughtWorks, Inc.
+Copyright 2026 Julias Shaw

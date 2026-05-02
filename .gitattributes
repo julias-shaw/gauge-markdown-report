@@ -1,0 +1,5 @@
+# Force LF line endings on every checkout, regardless of platform.
+# The mdgen golden fixtures (mdgen/_testdata/*.md) are byte-compared against
+# renderer output, which uses LF. Without this, Windows checkouts get CRLF
+# from git's autocrlf default and the goldens fail.
+* text=auto eol=lf
