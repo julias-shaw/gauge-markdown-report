@@ -507,6 +507,113 @@ func TestRenderSpec(t *testing.T) {
 	})
 }
 
+func TestErrorTypeLabel(t *testing.T) {
+	tests := []struct {
+		in   errorType
+		want string
+	}{
+		{parseErrorType, "Parse Error"},
+		{validationErrorType, "Validation Error"},
+		{errorType("anything-else"), "Error"},
+		{errorType(""), "Error"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.in), func(t *testing.T) {
+			if got := errorTypeLabel(tt.in); got != tt.want {
+				t.Errorf("errorTypeLabel(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestRenderConcept_DepthFlattening exercises the maxNestingDepth fallback.
+// At depth >= 3, concept children must collapse into a fenced block instead
+// of being rendered as further-indented bullets — GFM's indent rules get
+// ambiguous past three levels.
+func TestRenderConcept_DepthFlattening(t *testing.T) {
+	leaf := &step{
+		Fragments: []*fragment{textFrag("inner step")},
+		Result:    &result{Status: pass},
+	}
+	innerConcept := &concept{
+		ConceptStep: &step{
+			Fragments: []*fragment{textFrag("inner concept")},
+			Result:    &result{Status: pass},
+		},
+		Items: []item{
+			{Kind: stepKind, Step: leaf},
+			{Kind: commentKind, Comment: &comment{Text: "side note"}},
+		},
+	}
+	got := renderTo(t, func(b *bytes.Buffer) error {
+		// Start at depth = maxNestingDepth so the fallback path is exercised.
+		return renderConcept(b, innerConcept, maxNestingDepth)
+	})
+	mustContain(t, got, "inner concept")
+	mustContain(t, got, "inner step")
+	mustContain(t, got, "```")     // fenced block opens
+	mustContain(t, got, "side note")
+}
+
+// TestWriteFlatItem covers the textual fallback used inside the
+// depth-flattening fenced block. The branches are: step / nested concept /
+// comment / nil, plus nested concept's recursive call.
+func TestWriteFlatItem(t *testing.T) {
+	tests := []struct {
+		name string
+		it   item
+		want string
+	}{
+		{
+			"step",
+			item{Kind: stepKind, Step: &step{
+				Fragments: []*fragment{textFrag("a step")}, Result: &result{Status: pass},
+			}},
+			"a step\n",
+		},
+		{
+			"nil-step",
+			item{Kind: stepKind, Step: nil},
+			"",
+		},
+		{
+			"nested-concept",
+			item{Kind: conceptKind, Concept: &concept{
+				ConceptStep: &step{
+					Fragments: []*fragment{textFrag("outer")}, Result: &result{Status: pass},
+				},
+				Items: []item{{Kind: stepKind, Step: &step{
+					Fragments: []*fragment{textFrag("inner")}, Result: &result{Status: pass},
+				}}},
+			}},
+			"outer\ninner\n",
+		},
+		{
+			"nil-concept",
+			item{Kind: conceptKind, Concept: nil},
+			"",
+		},
+		{
+			"comment",
+			item{Kind: commentKind, Comment: &comment{Text: "a remark"}},
+			"# a remark\n",
+		},
+		{
+			"unknown-kind",
+			item{Kind: tokenKind("garbage")},
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := renderTo(t, func(b *bytes.Buffer) error { return writeFlatItem(b, tt.it) })
+			if got != tt.want {
+				t.Errorf("writeFlatItem(%s) = %q, want %q", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRenderIndex(t *testing.T) {
 	suite := &SuiteResult{
 		ProjectName:          "demo",
