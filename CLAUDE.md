@@ -32,6 +32,13 @@ go test -update ./mdgen/...
 
 # Lint (CI uses golangci-lint via .github/workflows/golangci-lint.yml)
 go vet ./...
+
+# Mutation testing (gremlins). Slow — ~80s for ./mdgen alone. Config
+# lives in .gremlins.yaml; current ./mdgen baseline is 85% efficacy,
+# 94% mutator coverage. CI runs it weekly on Mondays + on-demand via
+# workflow_dispatch (.github/workflows/mutation.yml).
+go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+gremlins unleash ./mdgen
 ```
 
 `go test` is the only test entry point — `make.go` is for building, not testing. CI (`.github/workflows/test.yml`) runs `go test ./...` on Linux, macOS, and Windows.

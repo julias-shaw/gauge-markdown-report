@@ -1,0 +1,53 @@
+# Gremlins mutation-testing configuration.
+# https://gremlins.dev — invoked as `gremlins unleash`.
+#
+# Thresholds below are the current ratchet — failing them fails CI. Tighten
+# them as the test suite gets stricter (kill more mutants); loosen only with
+# a clear reason in the commit. Both numbers should drift upward over time.
+#
+# Mutators we enable are the four Gremlins defaults plus `invert-negatives`.
+# The disabled-by-default ones (invert-assignments, invert-bitwise,
+# invert-bwassign, invert-logical, invert-loopctrl, remove-self-assignments)
+# are riskier — they tend to produce build-breaking or equivalent mutations
+# more often than meaningful ones.
+
+unleash:
+  # The default per-mutation timeout (a small multiple of the unmutated
+  # test time) is too tight for our suite — the goldmark parse test and
+  # the integration filesystem tests push past it on a cold cache and
+  # every mutation hits the timeout. 30x the baseline test time gives
+  # comfortable headroom; runs land in ~80s for ./mdgen.
+  timeout-coefficient: 30
+
+  threshold:
+    # Efficacy = killed / (killed + lived). The percent of "your tests
+    # detected this code change" out of mutations that ran. Low efficacy
+    # means tests pass too easily on broken code.
+    #
+    # Current baseline on ./mdgen: 85.06%. Floor set at 80% for headroom;
+    # ratchet up after deliberate test-suite improvements, never as a
+    # silent reaction to drift.
+    efficacy: 80
+    # Mutant coverage = (killed + lived) / total runnable. The percent of
+    # mutations the test suite even exercised. Low coverage means whole
+    # branches of code aren't being tested.
+    #
+    # Current baseline on ./mdgen: 93.88%. Floor at 90%.
+    mutant-coverage: 90
+
+  # Skip the Go-script-style build runner — its "tests" are running
+  # `go run ./...` cross-compiles, not unit tests, so mutating it is noise.
+  exclude-files:
+    - build/make.go
+
+mutants:
+  arithmetic-base:
+    enabled: true
+  conditionals-boundary:
+    enabled: true
+  conditionals-negation:
+    enabled: true
+  increment-decrement:
+    enabled: true
+  invert-negatives:
+    enabled: true

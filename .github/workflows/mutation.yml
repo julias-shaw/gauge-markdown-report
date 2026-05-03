@@ -1,0 +1,45 @@
+name: mutation
+
+# Mutation testing is slow (~10-20 min per package). We deliberately don't
+# run it on every PR — instead:
+#
+# - workflow_dispatch: anyone can kick a full run from the Actions tab when
+#   they want a current efficacy / coverage number.
+# - schedule: a weekly Monday-morning run keeps the trend visible. Failures
+#   show up in the Actions list; tighten/loosen .gremlins.yaml thresholds
+#   in response, don't disable the workflow.
+#
+# Scoped to ./mdgen because that's the package with the renderer logic
+# worth probing. The other packages (env, logger, regenerate) are thin
+# wrappers — mutation testing them adds noise more than signal.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 09:00 UTC every Monday.
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutation testing (mdgen)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@v6.4.0
+        with:
+          check-latest: true
+          go-version-file: 'go.mod'
+
+      - name: Install gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+
+      - name: Run mutation tests on mdgen
+        # Thresholds live in .gremlins.yaml; gremlins exits non-zero if
+        # efficacy or mutant-coverage drops below them.
+        run: gremlins unleash ./mdgen
