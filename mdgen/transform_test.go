@@ -1735,3 +1735,158 @@ func TestToSuiteResultMapsSpecResultsGreaterThanBufferSize(t *testing.T) {
 // BenchmarkToSuite was dropped from this PR — it relied on
 // passSpecResWithScreenshots from the original integration_test.go which is
 // not yet ported. It will return when the integration tests do (PR2).
+
+// TestComputeScenarioTableStatuses covers the scenario-table-driven path:
+// each scenario in the group corresponds to one row of a shared data table,
+// and the row's status should track the scenario's execution state. After
+// processing, the data table reference is kept on the FIRST scenario only
+// so the renderer doesn't print it once per row.
+func TestComputeScenarioTableStatuses(t *testing.T) {
+	mkTable := func() *table {
+		return &table{
+			Headers: []string{"name"},
+			Rows: []*row{
+				{Cells: []string{"alice"}, Result: pass},
+				{Cells: []string{"bob"}, Result: pass},
+				{Cells: []string{"carol"}, Result: pass},
+			},
+		}
+	}
+
+	t.Run("row-status-tracks-scenario-status", func(t *testing.T) {
+		shared := mkTable()
+		s := &spec{
+			Scenarios: []*scenario{
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 0, ExecutionStatus: pass, ScenarioDataTable: shared},
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 1, ExecutionStatus: fail, ScenarioDataTable: shared},
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 2, ExecutionStatus: skip, ScenarioDataTable: shared},
+			},
+		}
+		computeScenarioTableStatuses(s)
+		if shared.Rows[0].Result != pass {
+			t.Errorf("row 0 status = %q, want pass", shared.Rows[0].Result)
+		}
+		if shared.Rows[1].Result != fail {
+			t.Errorf("row 1 status = %q, want fail", shared.Rows[1].Result)
+		}
+		if shared.Rows[2].Result != skip {
+			t.Errorf("row 2 status = %q, want skip", shared.Rows[2].Result)
+		}
+		// Only the first scenario keeps the table; the rest get nil so the
+		// renderer doesn't emit the table once per row.
+		if s.Scenarios[0].ScenarioDataTable == nil {
+			t.Error("first scenario should keep ScenarioDataTable")
+		}
+		for i := 1; i < len(s.Scenarios); i++ {
+			if s.Scenarios[i].ScenarioDataTable != nil {
+				t.Errorf("scenario %d should have nil ScenarioDataTable after processing", i)
+			}
+		}
+	})
+
+	t.Run("hook-failure-forces-fail", func(t *testing.T) {
+		shared := mkTable()
+		s := &spec{
+			Scenarios: []*scenario{
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 0,
+					ExecutionStatus: pass, BeforeScenarioHookFailure: &hookFailure{ErrMsg: "x"},
+					ScenarioDataTable: shared},
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 1,
+					ExecutionStatus: pass, AfterScenarioHookFailure: &hookFailure{ErrMsg: "y"},
+					ScenarioDataTable: shared},
+			},
+		}
+		computeScenarioTableStatuses(s)
+		if shared.Rows[0].Result != fail {
+			t.Errorf("row 0 with before-hook-failure should be fail, got %q", shared.Rows[0].Result)
+		}
+		if shared.Rows[1].Result != fail {
+			t.Errorf("row 1 with after-hook-failure should be fail, got %q", shared.Rows[1].Result)
+		}
+	})
+
+	t.Run("nil-table-skipped-cleanly", func(t *testing.T) {
+		s := &spec{
+			Scenarios: []*scenario{
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 0, ExecutionStatus: pass},
+			},
+		}
+		computeScenarioTableStatuses(s) // must not panic
+	})
+
+	t.Run("non-table-driven-scenarios-ignored", func(t *testing.T) {
+		shared := mkTable()
+		s := &spec{
+			Scenarios: []*scenario{
+				{Heading: "regular", IsScenarioTableDriven: false, ExecutionStatus: pass},
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 0, ExecutionStatus: fail, ScenarioDataTable: shared},
+			},
+		}
+		computeScenarioTableStatuses(s)
+		// Non-table-driven scenario shouldn't have its table touched.
+		if s.Scenarios[1].ScenarioDataTable == nil {
+			t.Error("only table-driven scenario should keep its table")
+		}
+	})
+
+	t.Run("out-of-bounds-row-index-ignored", func(t *testing.T) {
+		shared := mkTable()
+		s := &spec{
+			Scenarios: []*scenario{
+				{Heading: "g", IsScenarioTableDriven: true, ScenarioTableRowIndex: 99, ExecutionStatus: fail, ScenarioDataTable: shared},
+			},
+		}
+		computeScenarioTableStatuses(s) // must not panic; rows untouched
+		for i, r := range shared.Rows {
+			if r.Result != pass {
+				t.Errorf("row %d touched despite out-of-bounds index: got %q", i, r.Result)
+			}
+		}
+	})
+}
+
+// TestGetEffectiveState exercises bySceStatus.getEffectiveState. For
+// scenario-table-driven scenarios that share a heading, the "effective"
+// state is the worst across the group — so a fail in any sibling drags the
+// group's effective state to -1 (fail).
+func TestGetEffectiveState(t *testing.T) {
+	t.Run("non-table-driven-uses-own-state", func(t *testing.T) {
+		s := bySceStatus{
+			{Heading: "x", ExecutionStatus: pass},
+			{Heading: "y", ExecutionStatus: fail},
+		}
+		if got := s.getEffectiveState(0); got != 1 {
+			t.Errorf("pass scenario: got %d, want 1", got)
+		}
+		if got := s.getEffectiveState(1); got != -1 {
+			t.Errorf("fail scenario: got %d, want -1", got)
+		}
+	})
+
+	t.Run("table-driven-takes-worst-in-group", func(t *testing.T) {
+		s := bySceStatus{
+			{Heading: "g", IsScenarioTableDriven: true, ExecutionStatus: pass},
+			{Heading: "g", IsScenarioTableDriven: true, ExecutionStatus: fail},
+			{Heading: "g", IsScenarioTableDriven: true, ExecutionStatus: skip},
+		}
+		// Every member of the group should report fail (-1) as its effective state.
+		for i := range s {
+			if got := s.getEffectiveState(i); got != -1 {
+				t.Errorf("scenario %d: got %d, want -1 (worst-in-group)", i, got)
+			}
+		}
+	})
+
+	t.Run("table-driven-without-failures-uses-own-state", func(t *testing.T) {
+		s := bySceStatus{
+			{Heading: "g", IsScenarioTableDriven: true, ExecutionStatus: pass},
+			{Heading: "g", IsScenarioTableDriven: true, ExecutionStatus: skip},
+		}
+		// Group's worst is skip (0), so every member effective-state is 0.
+		for i := range s {
+			if got := s.getEffectiveState(i); got != 0 {
+				t.Errorf("scenario %d: got %d, want 0 (skip is worst-in-group)", i, got)
+			}
+		}
+	})
+}

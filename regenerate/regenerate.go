@@ -6,6 +6,7 @@
 package regenerate
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/getgauge/gauge-proto/go/gauge_messages"
@@ -15,18 +16,31 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Report regenerates a Markdown report from a previously persisted
-// last_run_result.bin (proto-serialized SuiteResult).
-func Report(inputFile, reportsDir, pRoot string) {
+// loadResult reads a proto-serialized SuiteExecutionResult from inputFile
+// and converts it to the internal SuiteResult shape.
+//
+// Pure: no filesystem writes, no logger.Fatal, no os.Exit. The caller
+// decides what to do with errors. Extracted from Report so the parsing
+// half can be unit-tested without spinning up the full regenerate flow.
+func loadResult(inputFile, projectRoot string) (*mdgen.SuiteResult, error) {
 	b, err := os.ReadFile(inputFile)
 	if err != nil {
-		logger.Fatal(err.Error())
+		return nil, fmt.Errorf("read %s: %w", inputFile, err)
 	}
 	psr := &gauge_messages.ProtoSuiteResult{}
 	if err := proto.Unmarshal(b, psr); err != nil {
-		logger.Fatalf("Unable to read last run data from %s. Error: %s", inputFile, err.Error())
+		return nil, fmt.Errorf("unmarshal %s: %w", inputFile, err)
 	}
-	res := mdgen.ToSuiteResult(pRoot, psr)
+	return mdgen.ToSuiteResult(projectRoot, psr), nil
+}
+
+// Report regenerates a Markdown report from a previously persisted
+// last_run_result (proto-serialized SuiteResult).
+func Report(inputFile, reportsDir, pRoot string) {
+	res, err := loadResult(inputFile, pRoot)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
 	env.CreateDirectory(reportsDir)
 	if err := mdgen.GenerateReports(res, reportsDir); err != nil {
 		logger.Fatalf("Failed to regenerate report: %s", err.Error())
